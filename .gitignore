@@ -3,3 +3,4 @@
 .gigaide
 demo.iml
 .git
+app/__pycache__/
