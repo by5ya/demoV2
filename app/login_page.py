@@ -2,6 +2,7 @@ from PySide6.QtWidgets import *
 from PySide6.QtGui import *
 from PySide6.QtCore import *
 from main import MainWin
+from messages import *
 
 class LoginPage(QFrame):
     def __init__(self, controller: MainWin, /):
@@ -27,12 +28,12 @@ class LoginPage(QFrame):
             from home_page import HomePage
             self.controller.switch_frame(HomePage, user=user)
         else:
-            pass
+            warn_ok("Неверные логин или пароль")
 
     def entry_g(self):
         user = {
-            "fio": "Гость",
-            "role": "Гость"
+            "fio": "Администратор",
+            "role": "Администратор"
         }
         from home_page import HomePage
         self.controller.switch_frame(HomePage, user=user)

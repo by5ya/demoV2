@@ -20,26 +20,65 @@ class HomePage(QFrame):
         self.scroll_layout.setContentsMargins(10, 10, 10, 10)
         self.scroll_layout.setSpacing(10)
 
-        self.refresh()
-        self.logout_pushButton.clicked.connect(self.logount)
+        self.sort_comboBox_2.addItems(["Сортировка", "По возрастанию", "По убыванию"])
+        self.sort_comboBox_2.currentTextChanged.connect(self.on_filters_changed)
 
-    def logount(self):
+        sellers = self.db.get_distinct("seller", "products")
+        self.filt_comboBox.addItems(["Все поставщики", *sellers])
+        self.filt_comboBox.currentTextChanged.connect(self.on_filters_changed)
+
+        self.search_lineEdit.textChanged.connect(self.on_filters_changed)
+        self.add_pushButton_3.clicked.connect(self.create_product)
+
+        self.refresh()
+        self.logout_pushButton.clicked.connect(self.logout)
+
+    def on_filters_changed(self):
+        sort = None
+        if self.sort_comboBox_2.currentText() == 'По возрастанию':
+            sort = True
+        elif self.sort_comboBox_2.currentText() == 'По убыванию':
+            sort = False
+
+        filt = ""
+        if self.filt_comboBox.currentText() != "Все поставщики":
+            filt = self.filt_comboBox.currentText().strip()
+
+        search = self.search_lineEdit.text()
+
+        self.refresh(sort, filt, search)
+
+    def logout(self):
         from login_page import LoginPage
         self.controller.switch_frame(LoginPage)
 
-    def refresh(self):
+    def refresh(self, sort=None, filt="", search=""):
         while self.scroll_layout.count():
             item = self.scroll_layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
 
-        products = self.db.get_products()
+        products = self.db.get_products(sort, filt, search)
         print(products)
         if products:
             for product in products:
                 from product_card import ProductCard
                 product_card_item = ProductCard(self.controller, product)
                 self.scroll_layout.addWidget(product_card_item)
+                product_card_item.clicked.connect(self.edit_product)
+
+    def edit_product(self, product):
+        if self.user['role'] == 'Администратор':
+            from edit_create_product import EditCreateProductPage
+            result = self.controller.switch_frame(EditCreateProductPage, product=product)
+            if result == QDialog.Accepted:
+                self.on_filters_changed()
+
+    def create_product(self):
+        from edit_create_product import EditCreateProductPage
+        result = self.controller.switch_frame(EditCreateProductPage)
+        if result == QDialog.Accepted:
+            self.on_filters_changed()
 
     def setupUi(self, Form):
         if not Form.objectName():

@@ -4,6 +4,7 @@ from PySide6.QtCore import *
 from main import MainWin
 
 class ProductCard(QFrame):
+    clicked = Signal(dict)
     def __init__(self, controller: MainWin, product: dict):
         super().__init__()
         self.controller = controller
@@ -34,6 +35,10 @@ class ProductCard(QFrame):
 
         if int(self.product['discount']) > 15:
             self.setStyleSheet(u"background-color:#2E8B57")
+
+    def mousePressEvent(self, event, /):
+        if event.button() == Qt.LeftButton:
+            self.clicked.emit(self.product)
 
     def setupUi(self, Form):
         if not Form.objectName():
