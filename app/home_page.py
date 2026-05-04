@@ -32,6 +32,8 @@ class HomePage(QFrame):
 
         self.refresh()
         self.logout_pushButton.clicked.connect(self.logout)
+        from order_page import OrderPage
+        self.order_pushButton_2.clicked.connect(lambda : self.controller.switch_frame(OrderPage, user=self.user))
 
     def on_filters_changed(self):
         sort = None
@@ -117,13 +119,13 @@ class HomePage(QFrame):
         self.horizontalLayout_2.setObjectName(u"horizontalLayout_2")
         self.order_pushButton_2 = QPushButton(self.widget)
         self.order_pushButton_2.setObjectName(u"order_pushButton_2")
-        self.order_pushButton_2.setVisible(False) if self.user['role'] in ['Гость', "Авторизаванный клиент"] else self.order_pushButton_2.setVisible(True)
+        self.order_pushButton_2.setVisible(False) if self.user['role'] in ['Гость', "Авторизированный клиент"] else self.order_pushButton_2.setVisible(True)
         self.order_pushButton_2.setStyleSheet(u"background-color:rgb(0, 250, 154)")
 
         self.horizontalLayout_2.addWidget(self.order_pushButton_2)
 
         self.add_pushButton_3 = QPushButton(self.widget)
-        self.add_pushButton_3.setVisible(False) if self.user['role'] in ['Гость', "Авторизаванный клиент"] else self.add_pushButton_3.setVisible(True)
+        self.add_pushButton_3.setVisible(False) if self.user['role'] in ['Гость', "Авторизированный клиент", "Менеджер"] else self.add_pushButton_3.setVisible(True)
         self.add_pushButton_3.setObjectName(u"add_pushButton_3")
         self.add_pushButton_3.setStyleSheet(u"background-color:rgb(0, 250, 154)")
 
@@ -131,14 +133,14 @@ class HomePage(QFrame):
 
         self.filt_comboBox = QComboBox(self.widget)
         self.filt_comboBox.setObjectName(u"filt_comboBox")
-        self.filt_comboBox.setVisible(False) if self.user['role'] in ['Гость', "Авторизаванный клиент"] else self.filt_comboBox.setVisible(True)
+        self.filt_comboBox.setVisible(False) if self.user['role'] in ['Гость', "Авторизированный клиент"] else self.filt_comboBox.setVisible(True)
         self.filt_comboBox.setStyleSheet(u"background-color:rgb(255, 255, 255)")
 
         self.horizontalLayout_2.addWidget(self.filt_comboBox)
 
         self.sort_comboBox_2 = QComboBox(self.widget)
         self.sort_comboBox_2.setObjectName(u"sort_comboBox_2")
-        self.sort_comboBox_2.setVisible(False) if self.user['role'] in ['Гость', "Авторизаванный клиент"] else self.sort_comboBox_2.setVisible(True)
+        self.sort_comboBox_2.setVisible(False) if self.user['role'] in ['Гость', "Авторизированный клиент"] else self.sort_comboBox_2.setVisible(True)
         self.sort_comboBox_2.setStyleSheet(u"background-color:rgb(255, 255, 255)")
 
         self.horizontalLayout_2.addWidget(self.sort_comboBox_2)
@@ -146,7 +148,7 @@ class HomePage(QFrame):
         self.search_lineEdit = QLineEdit(self.widget)
         self.search_lineEdit.setObjectName(u"search_lineEdit")
         self.search_lineEdit.setMaximumSize(QSize(250, 16777215))
-        self.search_lineEdit.setVisible(False) if self.user['role'] in ['Гость', "Авторизаванный клиент"] else self.search_lineEdit.setVisible(True)
+        self.search_lineEdit.setVisible(False) if self.user['role'] in ['Гость', "Авторизированный клиент"] else self.search_lineEdit.setVisible(True)
         self.search_lineEdit.setStyleSheet(u"background-color:rgb(255, 255, 255)")
 
         self.horizontalLayout_2.addWidget(self.search_lineEdit)

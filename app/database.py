@@ -160,3 +160,97 @@ class Database():
         cur.execute(query, (product_id,))
         cur.close()
         self.conn.commit()
+
+    def get_orders(self):
+        query = 'select o.id, o.articul, o.date_order, o.date_delivery, ad.name, o.status from orders o left join address ad on ad.id = o.address_id'
+        cur = self.conn.cursor()
+        cur.execute(query)
+        result = cur.fetchall()
+        if result:
+            return [
+                {
+                    "id": row[0],
+                    "articul": row[1],
+                    "date_order": row[2],
+                    "date_deliv": row[3],
+                    "address": row[4],
+                    "status": row[5]
+                }
+                for row in result
+            ]
+
+    def get_order_items(self, order_id):
+        query = "select oi.id, oi.quantity, p.name, p.articul, p.id from order_items oi left join products p on p.id = oi.product_id where oi.order_id = %s"
+        cur = self.conn.cursor()
+        cur.execute(query, (order_id,))
+        result = cur.fetchall()
+        if result:
+            return [
+                {
+                    "id": row[0],
+                    "quantity": row[1],
+                    "product_name": row[2],
+                    "product_articul": row[3],
+                    "product_id": row[4],
+                    "flag": "exist"
+                }
+                for row in result
+            ]
+    def create_order_item(self, order_item, order_id):
+        cur = self.conn.cursor()
+        cur.execute('insert into order_items (order_id, product_id, quantity) values (%s, %s, %s)', (order_id, order_item['product_id'], order_item['quantity'],))
+        self.conn.commit()
+
+    def delete_order_item(self, id):
+        cur = self.conn.cursor()
+        cur.execute('delete from order_items where id =  %s', (id,))
+        self.conn.commit()
+    def update_order_item(self, order_item, id):
+        cur = self.conn.cursor()
+        cur.execute('update order_items set quantity = %s where id = %s', (order_item['quantity'], id,))
+        self.conn.commit()
+
+    def create_order(self, order, user):
+        cur = self.conn.cursor()
+        address_id  = self.get_or_create(order['address'])
+        cur.execute('''insert into orders (
+        articul ,
+        date_order ,
+        date_delivery ,
+        address_id ,
+        user_id ,
+        code ,
+        status 
+        ) values (%s, %s, %s, %s, %s, %s, %s) returning id''', (order['articul'], order['date_order'], order['date_delivery'], address_id, user['id'], "000", order['status'],))
+
+        order_id = cur.fetchone()[0]
+        self.conn.commit()
+        return  order_id
+
+    def get_or_create(self, name):
+        cur = self.conn.cursor()
+        cur.execute('select id from address where name = %s', (name,))
+        result = cur.fetchone()
+        if result:
+            return result[0]
+        else:
+            cur.execute('insert into address (name) values (%s) returning id', (name,))
+            result = cur.fetchone()[0]
+            self.conn.commit()
+            return result
+
+    def update_order(self, order, order_id):
+        cur = self.conn.cursor()
+        address_id  = self.get_or_create(order['address'])
+        cur.execute('''update orders set
+        articul = %s ,
+        date_order = %s,
+        date_delivery = %s ,
+        address_id = %s,
+        status = %s where id = %s''',(order['articul'], order['date_order'], order['date_delivery'], address_id,  order['status'], order_id,))
+        self.conn.commit()
+
+    def delete_order(self, order_id):
+        cur = self.conn.cursor()
+        cur.execute('''delete from orders where id = %s''',(order_id,))
+        self.conn.commit()

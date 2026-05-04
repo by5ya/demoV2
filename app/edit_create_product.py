@@ -132,10 +132,10 @@ class EditCreateProductPage(QDialog):
         if self.image != "picture.png":
             try:
                 os.remove(self.controller.base_path/self.image)
-                self.image = filename
             except Exception as e:
                 print(e)
                 pass
+        self.image = filename
 
 
 

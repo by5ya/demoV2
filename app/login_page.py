@@ -32,8 +32,8 @@ class LoginPage(QFrame):
 
     def entry_g(self):
         user = {
-            "fio": "Администратор",
-            "role": "Администратор"
+            "fio": "Гость",
+            "role": "Гость"
         }
         from home_page import HomePage
         self.controller.switch_frame(HomePage, user=user)

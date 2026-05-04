@@ -1,26 +1,179 @@
-# -*- coding: utf-8 -*-
+import os
 
-################################################################################
-## Form generated from reading UI file 'editCreateOrder.ui'
-##
-## Created by: Qt User Interface Compiler version 6.11.0
-##
-## WARNING! All changes made in this file will be lost when recompiling UI file!
-################################################################################
+from PySide6.QtWidgets import *
+from PySide6.QtGui import *
+from PySide6.QtCore import *
+from main import MainWin
+import shutil
+from messages import *
+from datetime import datetime
 
-from PySide6.QtCore import (QCoreApplication, QDate, QDateTime, QLocale,
-    QMetaObject, QObject, QPoint, QRect,
-    QSize, QTime, QUrl, Qt)
-from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
-    QFont, QFontDatabase, QGradient, QIcon,
-    QImage, QKeySequence, QLinearGradient, QPainter,
-    QPalette, QPixmap, QRadialGradient, QTransform)
-from PySide6.QtWidgets import (QApplication, QComboBox, QDateEdit, QFormLayout,
-    QHBoxLayout, QHeaderView, QLabel, QLineEdit,
-    QPushButton, QSizePolicy, QSpacerItem, QSpinBox,
-    QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget)
 
-class Ui_Form(object):
+from pathlib import Path
+
+class EditCreateOrderPage(QDialog):
+    def __init__(self, controller: MainWin, order=None):
+        super().__init__()
+        self.controller = controller
+        self.db = self.controller.db
+        self.setupUi(self)
+        if order:
+            self.setWindowTitle("Редактирование заказа")
+            self.order = order
+            self.edit = True
+        else:
+            self.setWindowTitle("Создание заказа")
+            self.order = None
+            self.edit = False
+            self.del_pushButton_4.setVisible(False)
+
+        statuses = self.db.get_distinct("status", "orders")
+        self.status_comboBox.addItems(statuses)
+
+        self.order_items = []
+
+        products = self.db.get_products()
+        for prod in products:
+            self.prod_comboBox_2.addItem(f"{prod['name']} | {prod['articul']}", prod)
+
+        if self.edit:
+            self.articul_lineEdit.setText(self.order['articul'])
+            self.date_order_dateEdit.setDate(self.order['date_order'])
+            self.date_deliv_dateEdit_2.setDate(self.order['date_deliv'])
+            self.status_comboBox.setCurrentText(self.order['status'])
+            self.address_lineEdit.setText(self.order['address'])
+            self.get_oi()
+        self.add_prod_pushButton_2.clicked.connect(self.create_oi)
+        self.del_prod_pushButton.clicked.connect(self.delete_oi)
+        self.tableWidget.cellChanged.connect(self.edit_oi)
+        self.del_pushButton_4.clicked.connect(self.delete_order)
+        self.back_pushButton_5.clicked.connect(lambda: self.reject())
+        self.save_pushButton_3.clicked.connect(self.save)
+
+
+    def create_oi(self):
+        product = self.prod_comboBox_2.currentData()
+        quantity = self.quantity_spinBox.value()
+
+        existing_item = None
+        for item in self.order_items:
+            if item['product_articul'] == product['articul'] and item['flag'] != 'delete':
+                existing_item = item
+                break
+
+        if existing_item is None:
+            if product['articul'] not in self.order_items:
+                self.order_items.append({
+                    "flag": "new",
+                    "quantity": quantity,
+                    "product_name": product['name'],
+                    "product_id": product['id'],
+                    "product_articul": product['articul'],
+                })
+
+        self.set_order_items()
+
+    def delete_oi(self):
+        row = self.tableWidget.currentRow()
+        product = self.order_items[row]
+        if product['flag'] == 'new':
+            self.order_items.remove(product)
+        else:
+            self.order_items.remove(product)
+            product['flag'] = "delete"
+        self.set_order_items()
+
+    def edit_oi(self):
+        row = self.tableWidget.currentRow()
+        print(row)
+        column = self.tableWidget.currentColumn()
+        if column != 3:
+            return
+
+        product = self.order_items[row]
+        product['quantity'] = int(str(self.tableWidget.currentItem().text()))
+        if product['flag'] not in ['new', 'delete']:
+            product['flag'] = 'edited'
+
+        self.set_order_items()
+
+    def generate_articul(self):
+        articul = [f"{prod['product_articul']}, {prod['quantity']}" for prod in self.order_items]
+        self.articul_lineEdit.setText(",".join(articul))
+
+    def delete_order(self):
+        if warn_yes_no("Вы действительно хотите удалить заказ?"):
+            self.db.delete_order(self.order['id'])
+            self.accept()
+
+    def check(self):
+        return all([self.address_lineEdit.text(), self.articul_lineEdit.text()])
+
+    def save(self):
+        if self.check():
+            order = {
+                "articul": self.articul_lineEdit.text(),
+                "date_delivery": self.date_deliv_dateEdit_2.date().toPython(),
+                "date_order": self.date_order_dateEdit.date().toPython(),
+                "address": self.address_lineEdit.text(),
+                "status": self.status_comboBox.currentText()
+            }
+
+            create_items = [oi for oi in self.order_items if oi['flag'] == 'new']
+            delete_items = [oi for oi in self.order_items if oi['flag'] == 'delete']
+            edit_items = [oi for oi in self.order_items if oi['flag'] == 'edited']
+            if self.edit:
+                id = self.order['id']
+                self.db.update_order(order, id)
+                info_ok("Заказ успешно обновлен")
+            else:
+                id = self.db.create_order(order)
+                info_ok("Заказ успешно создан")
+
+            for create_item in create_items:
+                self.db.create_order_item(create_item, id)
+            for delete_item in delete_items:
+                self.db.delete_order_item(delete_item['id'])
+            for edit_item in edit_items:
+                self.db.update_order_item(edit_item, edit_item['id'])
+
+            self.accept()
+
+
+    def get_oi(self):
+        self.order_items = self.db.get_order_items(self.order['id'])
+        self.set_order_items()
+
+    def set_order_items(self):
+        self.tableWidget.setRowCount(len(self.order_items))
+
+        self.tableWidget.blockSignals(True)
+
+        self.tableWidget.setColumnCount(4)
+        self.tableWidget.setHorizontalHeaderLabels(['id', 'Наименование', "Артикул", "Количество"])
+
+        self.tableWidget.setColumnHidden(0, True)
+        print(self.order_items)
+
+        for row, item in enumerate(self.order_items):
+            if item['flag'] != 'delete':
+                if item.get('id'):
+                    ceilId = QTableWidgetItem(str(item['id']))
+                    self.tableWidget.setItem(row, 0, ceilId)
+
+                ceilName = QTableWidgetItem(item['product_name'])
+                ceilName.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
+                self.tableWidget.setItem(row, 1, ceilName)
+
+                ceilArticul = QTableWidgetItem(item['product_articul'])
+                ceilArticul.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
+                self.tableWidget.setItem(row, 2, ceilArticul)
+
+                ceilQuantity = QTableWidgetItem(str(item['quantity']))
+                self.tableWidget.setItem(row, 3, ceilQuantity)
+        self.tableWidget.blockSignals(False)
+        self.generate_articul()
+
     def setupUi(self, Form):
         if not Form.objectName():
             Form.setObjectName(u"Form")
@@ -38,6 +191,16 @@ class Ui_Form(object):
 
         self.articul_lineEdit = QLineEdit(Form)
         self.articul_lineEdit.setObjectName(u"articul_lineEdit")
+
+        self.address_lineEdit = QLineEdit(Form)
+        self.address_lineEdit.setObjectName(u"address_lineEdit")
+        self.formLayout.setWidget(1, QFormLayout.ItemRole.FieldRole, self.address_lineEdit)
+
+        self.label_1234 = QLabel(Form)
+        self.label_1234.setObjectName(u"label_4")
+        self.label_1234.setText("Адрес")
+        self.formLayout.setWidget(0, QFormLayout.ItemRole.LabelRole, self.label_1234)
+
 
         self.formLayout.setWidget(0, QFormLayout.ItemRole.FieldRole, self.articul_lineEdit)
 
